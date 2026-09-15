@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NaviQuest+ | Capgemini Gachibowli</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+  :root{
+    --navy:#0b1b33;
+    --navy-2:#12274a;
+    --accent-red:#e0362e;
+    --accent-green:#1fa363;
+    --ink:#0f1720;
+    --muted:#5b6b7d;
+    --line:#e4e8ee;
+    --panel-bg:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;font-family:"Segoe UI",Roboto,Arial,sans-serif;background:#0d1420;}
+
+  /* ---------- Navbar ---------- */
+  .navbar{
+    height:64px;
+    background:var(--navy);
+    display:flex;
+    align-items:center;
+    gap:22px;
+    padding:0 22px;
+    position:relative;
+    z-index:1200;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .brand{
+    color:#fff;
+    font-weight:700;
+    font-size:19px;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    white-space:nowrap;
+  }
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent-red);display:inline-block;}
+  .brand small{font-weight:400;color:#a9b6c9;font-size:12px;margin-left:2px;}
+
+  .dept-wrap{position:relative;}
+  .dept-btn{
+    background:transparent;border:none;color:#cdd7e6;font-size:14.5px;
+    display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 4px;
+  }
+  .dept-btn:hover{color:#fff;}
+  .dept-menu{
+    display:none;position:absolute;top:44px;left:0;background:#fff;border-radius:8px;
+    box-shadow:0 12px 28px rgba(0,0,0,0.25);min-width:230px;overflow:hidden;
+    border:1px solid var(--line);
+  }
+  .dept-menu.open{display:block;}
+  .dept-menu button{
+    display:block;width:100%;text-align:left;background:none;border:none;padding:10px 14px;
+    font-size:14px;color:var(--ink);cursor:pointer;
+  }
+  .dept-menu button:hover{background:#f2f5fa;}
+
+  .searchbar{display:flex;align-items:center;gap:10px;flex:1;max-width:640px;}
+  .searchbar input{
+    height:38px;border-radius:7px;border:1px solid transparent;padding:0 12px;
+    font-size:14px;width:180px;background:#1c2c47;color:#fff;
+  }
+  .searchbar input::placeholder{color:#8393a8;}
+  .searchbar input:focus{outline:2px solid #3d6fd6;background:#22344f;}
+  .searchbar button{
+    height:38px;padding:0 22px;border:none;border-radius:7px;background:#2563eb;
+    color:#fff;font-weight:600;font-size:14px;cursor:pointer;
+  }
+  .searchbar button:hover{background:#1d55d1;}
+  .searchbar .swap{
+    background:none;border:none;color:#8fa3bf;cursor:pointer;font-size:16px;padding:4px 2px;
+  }
+  .searchbar .swap:hover{color:#fff;}
+
+  .navbar .spacer{flex:0 0 auto;}
+  .clear-route{
+    margin-left:auto;background:none;border:1px solid rgba(255,255,255,0.18);color:#c7d2e2;
+    padding:8px 14px;border-radius:7px;font-size:13px;cursor:pointer;display:none;
+  }
+  .clear-route.show{display:inline-block;}
+  .clear-route:hover{background:rgba(255,255,255,0.08);}
+
+  .admin-btn{
+    background:#e8eef8;border:1px solid #b8c7dc;color:#17345f;padding:8px 14px;
+    border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;
+  }
+  .admin-btn:hover{background:#fff;border-color:#d5e0ef;}
+  .viewer-btn{
+    background:transparent;border:1px solid rgba(255,255,255,0.18);color:#c7d2e2;padding:8px 12px;
+    border-radius:7px;font-size:13px;cursor:pointer;display:none;
+  }
+  .viewer-btn.show{display:inline-block;}
+  .viewer-btn:hover{background:rgba(255,255,255,0.08);}
+
+  .route-page{display:none;min-height:calc(100% - 64px);background:#edf2f8;align-items:center;justify-content:center;padding:28px;}
+  .route-page.show{display:flex;}
+  .login-card{width:min(420px,100%);background:#fff;border:1px solid #d8e1ed;border-radius:12px;box-shadow:0 20px 50px rgba(11,27,51,0.2);overflow:hidden;}
+  .login-head{padding:28px 30px 24px;background:var(--navy);color:#fff;}
+  .login-head h1{margin:0 0 7px;font-size:24px;}
+  .login-head p{margin:0;color:#bdcbe0;font-size:13px;}
+  .login-body{padding:26px 30px 30px;}
+  .login-label{display:block;margin:0 0 7px;color:#33404f;font-size:13px;font-weight:700;}
+  .login-input{width:100%;height:42px;border:1px solid #cbd5e1;border-radius:7px;padding:0 12px;margin-bottom:16px;font-size:14px;}
+  .login-input:focus{outline:2px solid #9db9e8;border-color:#4f7fc9;}
+  .login-submit{width:100%;height:42px;border:0;border-radius:7px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
+  .login-submit:hover{background:#1d55d1;}
+  .login-error{display:none;margin:0 0 14px;color:#b42318;font-size:13px;font-weight:600;}
+  .login-error.show{display:block;}
+  .editor-strip{display:none;position:absolute;top:16px;left:16px;z-index:850;background:#fff;border:1px solid #d8e1ed;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.18);padding:10px 12px;gap:9px;align-items:center;}
+  .editor-strip.show{display:flex;}
+  .editor-strip strong{color:var(--navy);font-size:13px;}
+  .editor-save{border:0;border-radius:6px;background:#1fa363;color:#fff;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;}
+  .editor-save:hover{background:#188851;}
+  .editor-reset{border:1px solid #d6a3a3;border-radius:6px;background:#fff;color:#9b2c2c;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;}
+  .editor-reset:hover{background:#fff5f5;}
+  .editor-save-note{display:none;color:#1a6b46;font-size:12px;}
+  .editor-save-note.show{display:inline;}
+
+  .viewer-update{display:none;position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:1300;width:min(520px,calc(100% - 32px));background:#fff;border:1px solid #b9d9c8;border-left:4px solid #1fa363;border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,0.24);padding:13px 15px;}
+  .viewer-update.show{display:block;}
+  .viewer-update-title{color:#176b45;font-weight:800;font-size:13px;margin-bottom:6px;}
+  .viewer-update-line{color:#33404f;font-size:13px;line-height:1.45;}
+  .viewer-update-actions{display:flex;gap:8px;margin-top:10px;}
+  .viewer-update-actions button{border:1px solid #cbd5e1;border-radius:6px;padding:6px 10px;background:#fff;color:#33404f;font-size:12px;font-weight:700;cursor:pointer;}
+  .viewer-update-actions button:first-child{background:#eef7f1;border-color:#9bcbb0;color:#176b45;}
+  .success-popup{display:none;position:absolute;top:22px;right:22px;z-index:1500;background:#fff;border:1px solid #a8d5b9;border-left:4px solid #1fa363;border-radius:9px;box-shadow:0 12px 30px rgba(0,0,0,0.25);padding:14px 16px;width:min(330px,calc(100% - 44px));}
+  .success-popup.show{display:block;}
+  .success-popup-title{color:#176b45;font-size:14px;font-weight:800;margin-bottom:5px;}
+  .success-popup-text{color:#4b5b70;font-size:13px;line-height:1.4;}
+
+  /* ---------- Map area ---------- */
+  #map-wrap{position:relative;height:calc(100% - 64px);width:100%;}
+  #map{height:100%;width:100%;background:#0d1420;}
+
+  .leaflet-control-zoom a{border-radius:6px !important;}
+
+  /* label tooltip for buildings */
+  .block-label{
+    background:#ffffff;color:var(--ink);font-weight:600;font-size:12.5px;
+    padding:4px 9px;border-radius:6px;border:1px solid var(--line);
+    box-shadow:0 3px 10px rgba(0,0,0,0.18);
+  }
+  .leaflet-tooltip.block-label::before{border-top-color:#ffffff;}
+
+  /* ---------- Sidebar ---------- */
+  #sidebar{
+    position:absolute;top:16px;right:16px;bottom:16px;width:400px;max-width:90vw;
+    background:var(--panel-bg);border-radius:14px;box-shadow:0 18px 45px rgba(0,0,0,0.35);
+    overflow-y:auto;transform:translateX(430px);transition:transform .28s ease;
+    z-index:900;
+  }
+  #sidebar.open{transform:translateX(0);}
+  #admin-panel{
+    position:absolute;top:16px;right:16px;bottom:16px;width:420px;max-width:90vw;
+    background:#f8fafc;border:1px solid rgba(255,255,255,0.7);border-radius:14px;
+    box-shadow:0 18px 45px rgba(0,0,0,0.35);overflow-y:auto;
+    transform:translateX(450px);transition:transform .28s ease;z-index:1000;
+  }
+  #admin-panel.open{transform:translateX(0);}
+  .admin-head{padding:24px 24px 20px;background:var(--navy);color:#fff;position:relative;}
+  .admin-eyebrow{font-size:11px;letter-spacing:.12em;font-weight:700;color:#9fb4d3;margin-bottom:8px;}
+  .admin-title{font-size:21px;font-weight:700;margin:0 34px 6px 0;}
+  .admin-subtitle{font-size:13px;color:#c6d2e4;margin:0;}
+  .admin-close{
+    position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);
+    border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;color:#fff;
+  }
+  .admin-close:hover{background:rgba(255,255,255,0.2);}
+  .admin-body{padding:22px 24px 26px;}
+  .admin-label{display:block;color:#33404f;font-size:13px;font-weight:700;margin-bottom:8px;}
+  .admin-input{
+    width:100%;min-height:112px;resize:vertical;border:1px solid #cbd5e1;border-radius:8px;
+    background:#fff;color:var(--ink);font:14px/1.5 inherit;padding:12px;
+  }
+  .admin-input::placeholder{color:#8290a3;}
+  .admin-input:focus{outline:2px solid #9db9e8;border-color:#4f7fc9;}
+  .admin-submit{
+    width:100%;margin-top:12px;padding:11px 14px;border:0;border-radius:8px;background:#2563eb;
+    color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+  }
+  .admin-submit:hover{background:#1d55d1;}
+  .admin-submit:disabled{background:#9aa9bc;cursor:wait;}
+  .admin-status{display:none;margin-top:18px;padding:12px;border:1px solid #d8e1ee;border-radius:8px;background:#fff;}
+  .admin-status.show{display:block;}
+  .admin-status-row{display:flex;align-items:center;gap:9px;color:#516176;font-size:13px;line-height:1.4;}
+  .admin-spinner{width:13px;height:13px;border:2px solid #c9d4e4;border-top-color:#2563eb;border-radius:50%;animation:admin-spin .8s linear infinite;flex:0 0 auto;}
+  @keyframes admin-spin{to{transform:rotate(360deg);}}
+  .admin-result{display:none;margin-top:18px;border:1px solid #cbd9ea;border-radius:9px;background:#fff;overflow:hidden;}
+  .admin-result.show{display:block;}
+  .admin-result-head{padding:13px 15px;background:#eef4fc;border-bottom:1px solid #dbe5f2;color:#17345f;font-size:13px;font-weight:700;}
+  .admin-result-body{padding:15px;}
+  .admin-result-label{font-size:11px;color:#718096;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:5px;}
+  .admin-result-text{font-size:14px;color:var(--ink);line-height:1.5;margin-bottom:14px;}
+  .admin-result-meta{display:flex;justify-content:space-between;gap:12px;color:#5b6b7d;font-size:12px;}
+  .admin-intent-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+  .admin-intent-item{padding:10px 11px;border:1px solid #e0e7f0;border-radius:7px;background:#f8fafc;}
+  .admin-intent-value{font-size:13px;color:var(--ink);font-weight:700;line-height:1.35;}
+  .admin-path-question{font-size:13px;color:#33404f;font-weight:700;margin:0 0 10px;}
+  .admin-path-options{display:flex;gap:9px;}
+  .admin-path-option{flex:1;padding:9px 10px;border:1px solid #9fb8da;border-radius:7px;background:#fff;color:#17345f;font-size:13px;font-weight:700;cursor:pointer;}
+  .admin-path-option:hover,.admin-path-option.selected{background:#eaf2ff;border-color:#2563eb;}
+  .admin-next-step{display:none;margin-top:14px;padding:11px 12px;border-left:3px solid #2563eb;background:#f1f6fd;color:#33404f;font-size:13px;line-height:1.45;}
+  .admin-next-step.show{display:block;}
+  .admin-status-choice{display:none;margin-top:18px;padding-top:16px;border-top:1px solid #e0e7f0;}
+  .admin-status-choice.show{display:block;}
+  .admin-status-question{font-size:13px;color:#33404f;font-weight:700;margin:0 0 10px;}
+  .admin-status-options{display:grid;grid-template-columns:1fr;gap:8px;}
+  .admin-status-option{padding:10px 12px;text-align:left;border:1px solid #d4dce7;border-radius:7px;background:#fff;color:var(--ink);font-size:13px;font-weight:700;cursor:pointer;}
+  .admin-status-option:hover,.admin-status-option.selected{background:#f1f6fd;border-color:#2563eb;}
+  .admin-final-card{display:none;margin-top:18px;border:1px solid #b9cbe2;border-radius:9px;background:#fff;overflow:hidden;}
+  .admin-final-card.show{display:block;}
+  .admin-final-head{padding:13px 15px;background:#eef4fc;border-bottom:1px solid #dbe5f2;color:#17345f;font-size:13px;font-weight:700;}
+  .admin-final-body{padding:15px;}
+  .admin-final-path{font-size:14px;font-weight:700;color:var(--ink);line-height:1.55;margin-bottom:14px;}
+  .admin-final-path span{display:block;color:#5b6b7d;font-size:13px;font-weight:600;}
+  .admin-final-row{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid #edf1f5;font-size:13px;}
+  .admin-final-row:last-of-type{border-bottom:0;}
+  .admin-final-label{color:#718096;font-weight:600;}
+  .admin-final-value{color:var(--ink);font-weight:700;text-align:right;}
+  .admin-warning{margin-top:14px;padding:10px 11px;border-radius:7px;background:#fff8e6;color:#7a5710;font-size:12.5px;line-height:1.45;}
+  .admin-actions{display:flex;gap:9px;margin-top:16px;}
+  .admin-action-btn{flex:1;padding:10px 12px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;}
+  .admin-cancel{background:#fff;border:1px solid #cbd5e1;color:#4b5b70;}
+  .admin-cancel:hover{background:#f5f7fa;}
+  .admin-approve{background:#1fa363;border:1px solid #1a8a54;color:#fff;}
+  .admin-approve:hover{background:#188851;}
+  .admin-decision{display:none;margin-top:12px;color:#1a6b46;font-size:12.5px;font-weight:600;line-height:1.4;}
+  .admin-decision.show{display:block;}
+  .admin-confirm-backdrop{display:none;position:absolute;inset:0;background:rgba(11,27,51,0.58);z-index:1400;align-items:center;justify-content:center;padding:20px;}
+  .admin-confirm-backdrop.show{display:flex;}
+  .admin-confirm-dialog{width:100%;max-width:410px;background:#fff;border-radius:10px;box-shadow:0 20px 50px rgba(0,0,0,0.35);overflow:hidden;}
+  .admin-confirm-head{padding:18px 20px;background:var(--navy);color:#fff;font-size:17px;font-weight:700;}
+  .admin-confirm-body{padding:20px;}
+  .admin-confirm-row{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid #edf1f5;font-size:13px;}
+  .admin-confirm-row:last-of-type{border-bottom:0;}
+  .admin-confirm-label{color:#718096;font-weight:600;}
+  .admin-confirm-value{color:var(--ink);font-weight:700;text-align:right;}
+  .admin-passcode-label{display:block;margin-top:18px;margin-bottom:7px;color:#33404f;font-size:13px;font-weight:700;}
+  .admin-passcode-input{width:100%;height:40px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:16px;letter-spacing:.16em;}
+  .admin-passcode-input:focus{outline:2px solid #9db9e8;border-color:#4f7fc9;}
+  .admin-passcode-error{display:none;margin-top:8px;color:#b42318;font-size:12.5px;font-weight:600;}
+  .admin-passcode-error.show{display:block;}
+  .admin-confirm-actions{display:flex;gap:9px;margin-top:18px;}
+  .road-status-label{border:0;border-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,0.3);font-size:11px;font-weight:800;padding:4px 7px;}
+  .road-status-label.blocked{background:#8f1d1d;color:#fff;}
+  .road-status-label.construction{background:#d9820b;color:#fff;}
+  .leaflet-tooltip.road-status-label::before{display:none;}
+  .sb-close{
+    position:absolute;top:14px;right:14px;background:#f2f4f7;border:none;border-radius:50%;
+    width:30px;height:30px;font-size:16px;cursor:pointer;color:var(--muted);
+  }
+  .sb-close:hover{background:#e7eaef;color:var(--ink);}
+  .sb-hero{
+    height:170px;width:100%;object-fit:cover;display:block;background:#dfe6ee;
+  }
+  .sb-body{padding:20px 22px 26px;}
+  .sb-title{font-size:20px;font-weight:700;color:var(--ink);margin:2px 0 12px;padding-right:30px;}
+  .sb-row{font-size:13.5px;color:var(--ink);margin-bottom:9px;line-height:1.5;}
+  .sb-row b{color:#33404f;font-weight:600;}
+  .sb-tags{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 4px;}
+  .sb-tag{
+    background:#eef3ff;color:#2451c2;font-size:12px;font-weight:600;padding:5px 10px;
+    border-radius:20px;cursor:default;
+  }
+  .sb-floor-title{font-size:13.5px;font-weight:700;color:var(--ink);margin:18px 0 8px;}
+  .sb-floor-img{width:100%;border-radius:10px;border:1px solid var(--line);display:block;}
+  .sb-route-btn{
+    margin-top:16px;width:100%;padding:11px;border:none;border-radius:8px;background:var(--navy);
+    color:#fff;font-weight:600;font-size:14px;cursor:pointer;
+  }
+  .sb-route-btn:hover{background:var(--navy-2);}
+
+  /* ---------- Route summary card ---------- */
+  #route-card{
+    position:absolute;left:16px;bottom:16px;background:#fff;border-radius:12px;
+    box-shadow:0 14px 34px rgba(0,0,0,0.3);padding:16px 18px;min-width:250px;
+    display:none;z-index:900;
+  }
+  #route-card.show{display:block;}
+  .rc-title{font-size:13px;color:var(--muted);margin-bottom:6px;}
+  .rc-path{font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .rc-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .rc-meta{margin-top:10px;font-size:12.5px;color:var(--muted);display:flex;gap:14px;}
+  .rc-legend{display:flex;align-items:center;gap:6px;}
+  .rc-line{width:18px;height:3px;border-radius:2px;display:inline-block;}
+
+  /* toast for unreachable / errors */
+  #toast{
+    position:absolute;top:18px;left:50%;transform:translateX(-50%);
+    background:#1c2c47;color:#fff;padding:11px 20px;border-radius:8px;font-size:13.5px;
+    box-shadow:0 10px 24px rgba(0,0,0,0.3);display:none;z-index:1300;
+  }
+
+  @media (max-width:820px){
+    .navbar{flex-wrap:wrap;height:auto;padding:10px 14px;gap:10px;}
+    .searchbar{order:3;max-width:100%;width:100%;}
+    .searchbar input{flex:1;width:auto;}
+    #sidebar{left:10px;right:10px;width:auto;top:auto;bottom:0;height:70vh;border-radius:16px 16px 0 0;transform:translateY(110%);}
+    #sidebar.open{transform:translateY(0);}
+    #admin-panel{left:10px;right:10px;width:auto;top:auto;bottom:0;height:70vh;border-radius:16px 16px 0 0;transform:translateY(110%);}
+    #admin-panel.open{transform:translateY(0);}
+  }
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="brand"><span class="dot"></span>NaviQuest+ <small>Capgemini · Gachibowli</small></div>
+
+  <div class="dept-wrap">
+    <button class="dept-btn" id="deptBtn">Departments <span>▾</span></button>
+    <div class="dept-menu" id="deptMenu"></div>
+  </div>
+
+  <div class="searchbar">
+    <input list="blockList" id="fromInput" placeholder="From" />
+    <button class="swap" id="swapBtn" title="Swap">⇄</button>
+    <input list="blockList" id="toInput" placeholder="To" />
+    <datalist id="blockList"></datalist>
+    <button id="searchBtn">Search</button>
+  </div>
+
+  <button class="clear-route" id="clearBtn">Clear route</button>
+  <button class="viewer-btn" id="viewerBtn">Viewer</button>
+  <button class="admin-btn" id="adminBtn">Admin</button>
+</div>
+
+<section class="route-page" id="adminLoginPage" aria-label="Admin login">
+  <form class="login-card" id="adminLoginForm">
+    <div class="login-head">
+      <h1>NaviQuest+ Admin</h1>
+      <p>Authorized campus map management</p>
+    </div>
+    <div class="login-body">
+      <label class="login-label" for="adminNameInput">Admin Name</label>
+      <input class="login-input" id="adminNameInput" autocomplete="username" />
+      <label class="login-label" for="adminPasswordInput">Password</label>
+      <input class="login-input" id="adminPasswordInput" type="password" autocomplete="current-password" />
+      <p class="login-error" id="adminLoginError">Invalid admin credentials.</p>
+      <button class="login-submit" type="submit">Sign In</button>
+    </div>
+  </form>
+</section>
+
+<div id="map-wrap">
+  <div id="map"></div>
+
+  <div class="editor-strip" id="editorStrip">
+    <strong>Campus map editor</strong>
+    <button class="editor-save" id="editorSaveBtn">Save Changes</button>
+    <button class="editor-reset" id="editorResetBtn">Reset Demo Data</button>
+    <span class="editor-save-note" id="editorSaveNote">Changes saved</span>
+  </div>
+
+  <div id="sidebar">
+    <button class="sb-close" id="sbClose">✕</button>
+    <img class="sb-hero" id="sbHero" src="" alt="" />
+    <div class="sb-body">
+      <div class="sb-title" id="sbTitle"></div>
+      <div class="sb-row" id="sbDesc"></div>
+      <div class="sb-row" id="sbFloors"></div>
+      <div class="sb-row" id="sbHours"></div>
+      <div class="sb-tags" id="sbTags"></div>
+      <div class="sb-floor-title" id="sbFloorTitle" style="display:none;">Floor plan</div>
+      <img class="sb-floor-img" id="sbFloorImg" style="display:none;" />
+      <button class="sb-route-btn" id="sbRouteBtn">Get directions from here</button>
+    </div>
+  </div>
+
+  <aside id="admin-panel" aria-label="Admin panel">
+    <div class="admin-head">
+      <button class="admin-close" id="adminClose" aria-label="Close Admin panel">✕</button>
+      <div class="admin-eyebrow">AI CAMPUS ASSISTANT</div>
+      <h2 class="admin-title">Campus management</h2>
+      <p class="admin-subtitle">AI-assisted campus management</p>
+    </div>
+    <div class="admin-body">
+      <label class="admin-label" for="adminInput">Describe a campus change...</label>
+      <textarea class="admin-input" id="adminInput" placeholder="Block the pathway from SB1 Main Entrance to Canteen."></textarea>
+      <button class="admin-submit" id="adminInterpretBtn">Interpret with AI</button>
+      <div class="admin-status" id="adminStatus" aria-live="polite">
+        <div class="admin-status-row"><span class="admin-spinner"></span><span id="adminStatusText">Understanding request...</span></div>
+      </div>
+      <div class="admin-result" id="adminResult" aria-live="polite">
+        <div class="admin-result-head">AI interpretation</div>
+        <div class="admin-result-body">
+          <div class="admin-intent-grid">
+            <div class="admin-intent-item"><div class="admin-result-label">Action</div><div class="admin-intent-value" id="adminActionValue"></div></div>
+            <div class="admin-intent-item"><div class="admin-result-label">From</div><div class="admin-intent-value" id="adminFromValue"></div></div>
+            <div class="admin-intent-item"><div class="admin-result-label">To</div><div class="admin-intent-value" id="adminToValue"></div></div>
+            <div class="admin-intent-item"><div class="admin-result-label">Request</div><div class="admin-intent-value" id="adminRequestValue"></div></div>
+          </div>
+          <p class="admin-path-question" id="adminPathQuestion">Which pathway would you like to update?</p>
+          <div class="admin-path-options">
+            <button class="admin-path-option" data-path-id="PATH_A_SB1_CANTEEN">Path A</button>
+            <button class="admin-path-option" data-path-id="PATH_B_SB1_CANTEEN">Path B</button>
+          </div>
+          <div class="admin-final-card" id="adminRenameCard">
+            <div class="admin-final-head">AI UNDERSTOOD</div>
+            <div class="admin-final-body">
+              <div class="admin-final-row"><span class="admin-final-label">Action</span><strong class="admin-final-value">RENAME_BLOCK</strong></div>
+              <div class="admin-final-row"><span class="admin-final-label">Current name</span><strong class="admin-final-value" id="adminRenameCurrent"></strong></div>
+              <div class="admin-final-row"><span class="admin-final-label">New name</span><strong class="admin-final-value" id="adminRenameNew"></strong></div>
+              <p class="admin-path-question" id="adminRenameQuestion"></p>
+              <div class="admin-actions">
+                <button class="admin-action-btn admin-cancel" id="adminRenameCancel">Cancel</button>
+                <button class="admin-action-btn admin-approve" id="adminRenameConfirm">Confirm</button>
+              </div>
+            </div>
+          </div>
+          <div class="admin-next-step" id="adminNextStep"></div>
+          <div class="admin-status-choice" id="adminStatusChoice">
+            <p class="admin-status-question">What status should this pathway have?</p>
+            <div class="admin-status-options">
+              <button class="admin-status-option" data-status="OPEN">🟢 Open</button>
+              <button class="admin-status-option" data-status="UNDER CONSTRUCTION">🟠 Under Construction</button>
+              <button class="admin-status-option" data-status="BLOCKED">🔴 Blocked</button>
+            </div>
+          </div>
+          <div class="admin-final-card" id="adminFinalCard">
+            <div class="admin-final-head">🤖 AI INTERPRETATION</div>
+            <div class="admin-final-body">
+              <div class="admin-result-label">Path</div>
+              <div class="admin-final-path"><span>SB1 Main Entrance</span>↓<span>Canteen Entrance</span></div>
+              <div class="admin-final-row"><span class="admin-final-label">Action</span><strong class="admin-final-value">UPDATE_PATH_STATUS</strong></div>
+              <div class="admin-final-row"><span class="admin-final-label">Selected</span><strong class="admin-final-value" id="adminSelectedPath"></strong></div>
+              <div class="admin-final-row"><span class="admin-final-label">Status</span><strong class="admin-final-value" id="adminSelectedStatus"></strong></div>
+              <div class="admin-final-row"><span class="admin-final-label">Reason</span><strong class="admin-final-value" id="adminSelectedReason"></strong></div>
+              <div class="admin-warning">⚠️ This path will be avoided when possible.</div>
+              <div class="admin-actions">
+                <button class="admin-action-btn admin-cancel" id="adminCancelChange">Cancel</button>
+                <button class="admin-action-btn admin-approve" id="adminApproveChange">✓ Approve Changes</button>
+              </div>
+              <div class="admin-decision" id="adminDecision" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="admin-result-meta"><span>Prototype rule match</span><strong id="adminConfidence">High confidence</strong></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div id="route-card">
+    <div class="rc-title">Suggested route</div>
+    <div class="rc-path" id="rcPath"></div>
+    <div class="rc-meta">
+      <span id="rcDistance"></span>
+      <span class="rc-legend"><span class="rc-line" style="background:var(--accent-red)"></span>Best route</span>
+      <span class="rc-legend" id="rcAltLegend" style="display:none;"><span class="rc-line" style="background:#9aa4b2"></span>Alternate</span>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <div class="success-popup" id="successPopup" aria-live="polite">
+    <div class="success-popup-title">✓ Changes Approved</div>
+    <div class="success-popup-text">Campus map has been updated successfully.</div>
+  </div>
+
+  <div class="viewer-update" id="viewerUpdate" aria-live="polite">
+    <div class="viewer-update-title" id="viewerUpdateTitle">🟢 Campus Map Updated Recently</div>
+    <div class="viewer-update-line" id="viewerUpdatePath"></div>
+    <div class="viewer-update-line" id="viewerUpdateStatus"></div>
+    <div class="viewer-update-line" id="viewerUpdateReason"></div>
+    <div class="viewer-update-actions">
+      <button id="viewerViewChanges">View Changes</button>
+      <button id="viewerDismissUpdate">Dismiss</button>
+    </div>
+  </div>
+
+  <div class="admin-confirm-backdrop" id="adminConfirmBackdrop" role="dialog" aria-modal="true" aria-labelledby="adminConfirmTitle">
+    <div class="admin-confirm-dialog">
+      <div class="admin-confirm-head" id="adminConfirmTitle">Confirm Campus Map Update</div>
+      <div class="admin-confirm-body">
+        <div class="admin-confirm-row"><span class="admin-confirm-label" id="adminConfirmRouteLabel">Path</span><strong class="admin-confirm-value" id="adminConfirmRoute">SB1 Main Entrance → Canteen Entrance</strong></div>
+        <div class="admin-confirm-row"><span class="admin-confirm-label" id="adminConfirmPathLabel">Path</span><strong class="admin-confirm-value" id="adminConfirmPath"></strong></div>
+        <div class="admin-confirm-row"><span class="admin-confirm-label" id="adminConfirmStatusLabel">New Status</span><strong class="admin-confirm-value" id="adminConfirmStatus"></strong></div>
+        <div class="admin-confirm-row"><span class="admin-confirm-label" id="adminConfirmReasonLabel">Reason</span><strong class="admin-confirm-value" id="adminConfirmReason"></strong></div>
+        <label class="admin-passcode-label" for="adminPasscode">Enter Admin Passcode</label>
+        <input class="admin-passcode-input" id="adminPasscode" type="password" inputmode="numeric" autocomplete="off" />
+        <div class="admin-passcode-error" id="adminPasscodeError">Invalid admin passcode.</div>
+        <div class="admin-confirm-actions">
+          <button class="admin-action-btn admin-cancel" id="adminConfirmCancel">Cancel</button>
+          <button class="admin-action-btn admin-approve" id="adminConfirmUpdate">Confirm &amp; Update</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* =========================================================
+   1. DATA — Capgemini Gachibowli campus
+   ========================================================= */
+
+const CAMPUS_BOUNDARY = [[
+  [78.336938,17.4199899],[78.3377681,17.4211934],[78.3386738,17.4206585],
+  [78.3391266,17.4198047],[78.3396764,17.419743],[78.3401077,17.4203499],
+  [78.3409163,17.4198767],[78.3399567,17.4182102],[78.336938,17.4199899]
+]];
+
+// building id -> polygon ring + metadata
+const BLOCKS = {
+  MAINBLOCK: {
+    label: "Main Block",
+    tag: "Reception",
+    ring: [[78.3378377,17.4203118],[78.3378377,17.4209978],[78.3382928,17.4209336],[78.3382566,17.4202279],[78.3378377,17.4203118]],
+    desc: "Front desk, security check-in and visitor badging for the Gachibowli campus.",
+    floors: 2,
+    tags: ["Reception","Security Desk","Visitor Lounge"],
+  },
+  CANTEEN: {
+    label: "Canteen",
+    tag: "Dining & Gym",
+    ring: [[78.3384532,17.4200552],[78.3387118,17.4202329],[78.3390169,17.419843],[78.3387894,17.4196999],[78.3384532,17.4200552]],
+    desc: "Main dining hall and employee gym — the central hub connecting all delivery blocks.",
+    floors: 2,
+    tags: ["Cafeteria","Gym","Recreation Zone"],
+  },
+  SB1: {
+    label: "SB1",
+    tag: "First Block",
+    ring: [[78.3373722,17.4202871],[78.3374291,17.4198627],[78.3379308,17.4198775],[78.3379877,17.4201638],[78.3373722,17.4202871]],
+    desc: "Delivery unit floors, open workspaces and client meeting rooms.",
+    floors: 4,
+    tags: ["Open Workspace","Meeting Rooms","War Room"],
+  },
+  SB2: {
+    label: "SB2",
+    tag: "Second Block",
+    ring: [[78.338045,17.4195385],[78.3380327,17.4198902],[78.3385427,17.4198023],[78.3384935,17.4194798],[78.338045,17.4195385]],
+    desc: "Delivery unit floors with collaboration pods and training rooms.",
+    floors: 4,
+    tags: ["Training Rooms","Collaboration Pods","Help Desk"],
+  },
+  SB3: {
+    label: "SB3",
+    tag: "Third Block",
+    ring: [[78.3387902,17.4196],[78.3387597,17.4191559],[78.3394769,17.4190685],[78.3396448,17.4194981],[78.3387902,17.4196]],
+    desc: "Delivery unit floors, includes the innovation lab and leadership offices.",
+    floors: 5,
+    tags: ["Innovation Lab","Leadership Offices","Client Briefing Center"],
+  },
+  PARKING: {
+    label: "Parking",
+    tag: "Bike & Car",
+    ring: [[78.3394617,17.4188938],[78.340095,17.4202043],[78.3407589,17.4198621],[78.340034,17.4186608],[78.3394617,17.4188938]],
+    desc: "Multi-level parking for two-wheelers and cars, closest to Gate 5.",
+    floors: 1,
+    tags: ["Two-wheeler Parking","Car Parking","EV Charging"],
+  },
+  TURF: {
+    label: "Turf",
+    tag: "Cricket Ground",
+    ring: [[78.3395385,17.4186457],[78.3395819,17.418739],[78.3399297,17.4186146],[78.3397993,17.418459],[78.3395385,17.4186457]],
+    desc: "Outdoor cricket turf for employee sports and evening events.",
+    floors: 1,
+    tags: ["Cricket Turf","Sports Events"],
+  },
+};
+
+try {
+  const savedBlockNames = JSON.parse(localStorage.getItem('naviquest-block-names') || '{}');
+  Object.entries(savedBlockNames).forEach(([id, label]) => { if (BLOCKS[id] && typeof label === 'string') BLOCKS[id].label = label; });
+} catch (error) {}
+
+// gates — shown as markers, not routable blocks
+const GATES = {
+  "GATE-1": [78.3378104,17.4211771],
+  "GATE-2": [78.3377465,17.419564],
+  "GATE-3": [78.3383986,17.4191795],
+  "GATE-4": [78.3397753,17.4183844],
+  "GATE-5": [78.3408214,17.4199664],
+};
+
+// entrance points, keyed by id -> {lng,lat,block}
+const ENTRANCES = {
+  "SB1-main":       {c:[78.3376106,17.4198539], block:"SB1"},
+  "SB1-back":       {c:[78.3375671,17.4202777], block:"SB1"},
+  "MAINBLOCK-main": {c:[78.3379581,17.4208905], block:"MAINBLOCK"},
+  "MAINBLOCK-side": {c:[78.3379078,17.4204864], block:"MAINBLOCK"},
+  "SB2-main":       {c:[78.3382541,17.419512],  block:"SB2"},
+  "SB2-back":       {c:[78.3382875,17.419851],  block:"SB2"},
+  "SB3-main":       {c:[78.3390943,17.4191092], block:"SB3"},
+  "SB3-back":       {c:[78.3391946,17.4194402], block:"SB3"},
+  "CANTEEN-main":   {c:[78.3386042,17.4201444], block:"CANTEEN"},
+};
+
+// road segments — each connects two entrances
+const ROADS = [
+  { id:"mainblock-sb1", from:"MAINBLOCK-main", to:"SB1-main", coords:[
+    [78.3379854,17.4209096],[78.3379909,17.4210632],[78.33783,17.4210314],[78.3377079,17.4204437],
+    [78.3373139,17.4202372],[78.337375,17.4198719],[78.3376246,17.419701],[78.3376246,17.4198175],[78.3376191,17.4198122]
+  ]},
+  { id:"PATH_A_SB1_CANTEEN", name:"SB1 Main Entrance to Canteen (Path A)", from:"SB1-main", to:"CANTEEN-main", coords:[
+    [78.3375826,17.4198528],[78.3375185,17.4197508],[78.3377804,17.4195876],[78.3380316,17.4199395],
+    [78.3383523,17.4199956],[78.3384004,17.4201537],[78.3385073,17.4201996],[78.3385928,17.4200925]
+  ]},
+  { id:"sb2-canteen", from:"SB2-main", to:"CANTEEN-main", coords:[
+    [78.3382555,17.4194932],[78.3382181,17.4193377],[78.3385306,17.4191797],[78.3387389,17.4196079],[78.3386588,17.4197888]
+  ]},
+  { id:"sb3-canteen-main", from:"SB3-main", to:"CANTEEN-main", coords:[
+    [78.3390645,17.4191247],[78.339034,17.4189087],[78.3385335,17.4191745],[78.3387381,17.4195939],[78.3386249,17.4198265]
+  ]},
+  { id:"sb3-canteen-back", from:"SB3-back", to:"CANTEEN-main", coords:[
+    [78.3391994,17.4194569],[78.3392038,17.4196064],[78.3387337,17.4196562],[78.3386032,17.4198846]
+  ]},
+  { id:"PATH_B_SB1_CANTEEN", name:"SB1 Main Entrance to Canteen (Path B)", from:"SB1-main", to:"CANTEEN-main", coords:[
+    [78.3375791,17.4198361],[78.3375324,17.4197676],[78.3384756,17.4192235],[78.3388235,17.419706]
+  ]},
+];
+
+/* =========================================================
+   2. GRAPH + PATHFINDING
+   ========================================================= */
+
+function haversine(a, b) {
+  const R = 6371000, toRad = d => d*Math.PI/180;
+  const dLat = toRad(b[1]-a[1]), dLng = toRad(b[0]-a[0]);
+  const la1 = toRad(a[1]), la2 = toRad(b[1]);
+  const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function edgeLength(coords){ let d=0; for(let i=1;i<coords.length;i++) d+=haversine(coords[i-1],coords[i]); return d; }
+
+const adjacency = {};
+Object.keys(ENTRANCES).forEach(id => adjacency[id] = []);
+const ROAD_STATUS_STORAGE_KEY = 'naviquest-road-status';
+const CAMPUS_UPDATE_STORAGE_KEY = 'naviquest-campus-update';
+const ROAD_STATUS = {};
+let savedRoadStatus = {};
+try { savedRoadStatus = JSON.parse(localStorage.getItem(ROAD_STATUS_STORAGE_KEY) || '{}'); } catch (error) { savedRoadStatus = {}; }
+ROADS.forEach(r => {
+  const savedStatus = savedRoadStatus[r.id] === 'UNDER CONSTRUCTION' ? 'UNDER_CONSTRUCTION' : savedRoadStatus[r.id];
+  ROAD_STATUS[r.id] = ['OPEN','BLOCKED','UNDER_CONSTRUCTION'].includes(savedStatus) ? savedStatus : 'OPEN';
+});
+ROADS.forEach(r => {
+  const w = edgeLength(r.coords);
+  adjacency[r.from].push({id:r.id, to:r.to, w, coords:r.coords, forward:true});
+  adjacency[r.to].push({id:r.id, to:r.from, w, coords:[...r.coords].reverse(), forward:false});
+});
+
+function dijkstra(sources, blockedEdgeIds) {
+  const distMap = {}, prev = {};
+  const blockedIds = new Set(
+    blockedEdgeIds ? (Array.isArray(blockedEdgeIds) ? blockedEdgeIds : [blockedEdgeIds]) : []
+  );
+  Object.keys(ENTRANCES).forEach(id => distMap[id] = Infinity);
+  sources.forEach(s => distMap[s] = 0);
+  const visited = new Set();
+  while (visited.size < Object.keys(ENTRANCES).length) {
+    let u=null, best=Infinity;
+    for (const id in distMap) if (!visited.has(id) && distMap[id]<best){best=distMap[id]; u=id;}
+    if (u===null || best===Infinity) break;
+    visited.add(u);
+    for (const e of adjacency[u]) {
+      if (ROAD_STATUS[e.id] === 'BLOCKED') continue;
+      if (blockedIds.has(e.id)) continue;
+      const constructionPenalty = ROAD_STATUS[e.id] === 'UNDER CONSTRUCTION' ? e.w * 4 : 0;
+      const alt = distMap[u] + e.w + constructionPenalty;
+      if (alt < distMap[e.to]) { distMap[e.to]=alt; prev[e.to]={from:u, edge:e}; }
+    }
+  }
+  return {distMap, prev};
+}
+
+function buildPathCoords(prev, src, dst){
+  const segs = []; let cur = dst;
+  while (cur !== src) {
+    const p = prev[cur];
+    if (!p) return null;
+    segs.unshift(p.edge.coords);
+    cur = p.from;
+  }
+  // flatten, avoid duplicate junction points
+  const flat = [];
+  segs.forEach((seg,i) => {
+    const s = i===0 ? seg : seg.slice(1);
+    s.forEach(pt => flat.push(pt));
+  });
+  return flat;
+}
+
+function bestBlockedKeyOnPath(prev, src, dst){
+  let cur = dst, key=null, maxW=-1;
+  while (cur !== src) {
+    const p = prev[cur];
+    if (!p) break;
+    if (p.edge.w > maxW) { maxW = p.edge.w; key = p.edge.id; }
+    cur = p.from;
+  }
+  return key;
+}
+
+// Route between two block ids -> {best:{coords,dist}, alt:{coords,dist}|null}
+function routeBetweenBlocks(blockA, blockB) {
+  const sourceEntrances = Object.entries(ENTRANCES).filter(([,v])=>v.block===blockA).map(([id])=>id);
+  const destEntrances   = Object.entries(ENTRANCES).filter(([,v])=>v.block===blockB).map(([id])=>id);
+  if (!sourceEntrances.length || !destEntrances.length) return null;
+
+  const {distMap, prev} = dijkstra(sourceEntrances);
+  let bestDst=null, bestDist=Infinity;
+  destEntrances.forEach(d => { if (distMap[d]<bestDist){bestDist=distMap[d]; bestDst=d;} });
+  if (bestDst===null || bestDist===Infinity) return null;
+
+  // recover actual source entrance used
+  let cur=bestDst, srcUsed=bestDst;
+  while (prev[cur]) { srcUsed = prev[cur].from; cur = prev[cur].from; }
+  const bestCoords = buildPathCoords(prev, srcUsed, bestDst);
+
+  // alternate: block the heaviest edge on best path, recompute
+  const blockedKey = bestBlockedKeyOnPath(prev, srcUsed, bestDst);
+  let alt = null;
+  if (blockedKey) {
+    const r2 = dijkstra(sourceEntrances, blockedKey);
+    if (r2.distMap[bestDst] < Infinity && r2.distMap[bestDst] > bestDist*1.001) {
+      let cur2=bestDst, srcUsed2=bestDst;
+      while (r2.prev[cur2]) { srcUsed2 = r2.prev[cur2].from; cur2 = r2.prev[cur2].from; }
+      const altCoords = buildPathCoords(r2.prev, srcUsed2, bestDst);
+      if (altCoords) alt = {coords:altCoords, dist:r2.distMap[bestDst]};
+    }
+  }
+  return { best:{coords:bestCoords, dist:bestDist}, alt };
+}
+
+/* =========================================================
+   3. MAP SETUP
+   ========================================================= */
+
+const toLL = c => [c[1], c[0]]; // geojson [lng,lat] -> leaflet [lat,lng]
+
+const map = L.map('map', { zoomControl:true, minZoom:15, maxZoom:20 });
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Tiles &copy; Esri', maxZoom:20,
+}).addTo(map);
+
+const boundaryLatLngs = CAMPUS_BOUNDARY[0].map(toLL);
+const bounds = L.latLngBounds(boundaryLatLngs);
+map.fitBounds(bounds, {padding:[40,40]});
+
+// dim everything outside the campus boundary using a donut polygon
+const WORLD = [[-90,-180],[-90,180],[90,180],[90,-180]];
+L.polygon([WORLD, boundaryLatLngs], {
+  stroke:false, fillColor:'#000000', fillOpacity:0.72, interactive:false
+}).addTo(map);
+
+L.polygon(boundaryLatLngs, {
+  color:'#ffffff', weight:2, opacity:0.85, fill:false, interactive:false
+}).addTo(map);
+
+// gate markers
+Object.entries(GATES).forEach(([name, coord]) => {
+  L.circleMarker(toLL(coord), {
+    radius:5, color:'#ffffff', weight:2, fillColor:'#0b1b33', fillOpacity:1
+  }).addTo(map).bindTooltip(name.replace('-', ' '), {direction:'top', className:'block-label'});
+});
+
+// road network (faint, always visible under everything)
+const roadLayers = {};
+ROADS.forEach(r => {
+  roadLayers[r.id] = L.polyline(r.coords.map(toLL), {color:'#ffffff', weight:2, opacity:0.28, dashArray:'1 7'}).addTo(map);
+});
+
+function refreshRoadLayer(roadId){
+  const layer = roadLayers[roadId];
+  if (!layer) return;
+  const status = ROAD_STATUS[roadId];
+  const style = status === 'BLOCKED'
+    ? {color:'#e0362e', weight:4, opacity:0.9, dashArray:'8 6'}
+    : status === 'UNDER CONSTRUCTION'
+      ? {color:'#e49a19', weight:4, opacity:0.9, dashArray:'5 5'}
+      : {color:'#ffffff', weight:2, opacity:0.28, dashArray:'1 7'};
+  layer.setStyle(style);
+  if (status === 'OPEN') {
+    layer.unbindTooltip();
+    return;
+  }
+  const labelClass = status === 'BLOCKED' ? 'road-status-label blocked' : 'road-status-label construction';
+  layer.unbindTooltip();
+  layer.bindTooltip(status, {permanent:true, direction:'center', className:labelClass, opacity:1});
+}
+ROADS.forEach(r => refreshRoadLayer(r.id));
+
+// building polygons
+const blockLayers = {};
+Object.entries(BLOCKS).forEach(([id, b]) => {
+  const layer = L.polygon(b.ring.map(toLL), {
+    color:'#ffffff', weight:1.6, opacity:0.9, fillColor:'#3d6fd6', fillOpacity:0.18
+  }).addTo(map);
+  layer.bindTooltip(b.label, {permanent:false, direction:'top', className:'block-label'});
+  layer.on('click', () => openBuilding(id));
+  layer.on('mouseover', () => layer.setStyle({fillOpacity:0.32}));
+  layer.on('mouseout', () => { if (!layer._selected) layer.setStyle({fillOpacity:0.18}); });
+  blockLayers[id] = layer;
+});
+
+let routeLayers = [];
+function clearRoute(){
+  routeLayers.forEach(l => map.removeLayer(l));
+  routeLayers = [];
+  Object.values(blockLayers).forEach(l => { l._selected=false; l.setStyle({fillColor:'#3d6fd6', fillOpacity:0.18}); });
+  document.getElementById('route-card').classList.remove('show');
+  document.getElementById('clearBtn').classList.remove('show');
+}
+
+function drawRoute(blockA, blockB){
+  const result = routeBetweenBlocks(blockA, blockB);
+  if (!result) { showToast("No mapped path between these blocks yet."); return; }
+  clearRoute();
+
+  // highlight source (green) / destination (red)
+  blockLayers[blockA]._selected = true;
+  blockLayers[blockA].setStyle({fillColor:'#1fa363', fillOpacity:0.45});
+  blockLayers[blockB]._selected = true;
+  blockLayers[blockB].setStyle({fillColor:'#e0362e', fillOpacity:0.45});
+
+  if (result.alt) {
+    const altLine = L.polyline(result.alt.coords.map(toLL), {color:'#9aa4b2', weight:4, opacity:0.85}).addTo(map);
+    routeLayers.push(altLine);
+  }
+  const bestLine = L.polyline(result.best.coords.map(toLL), {color:'#e0362e', weight:5, opacity:0.95}).addTo(map);
+  routeLayers.push(bestLine);
+
+  const fitBounds = L.latLngBounds(result.best.coords.map(toLL));
+  map.fitBounds(fitBounds, {padding:[90,90]});
+
+  document.getElementById('rcPath').innerHTML =
+    `<span class="rc-dot" style="background:#1fa363"></span>${BLOCKS[blockA].label} &rarr; ${BLOCKS[blockB].label}`;
+  document.getElementById('rcDistance').textContent = `${Math.round(result.best.dist)} m · ~${Math.max(1,Math.round(result.best.dist/70))} min walk`;
+  document.getElementById('rcAltLegend').style.display = result.alt ? 'flex' : 'none';
+  document.getElementById('route-card').classList.add('show');
+  document.getElementById('clearBtn').classList.add('show');
+}
+
+/* =========================================================
+   4. SIDEBAR / FLOOR PLAN
+   ========================================================= */
+
+function floorPlanSVG(label, floors, accent){
+  const rooms = [
+    {x:10,y:10,w:120,h:90,n:"Open Workspace"},
+    {x:140,y:10,w:80,h:42,n:"Meeting Rm"},
+    {x:140,y:58,w:80,h:42,n:"Pantry"},
+    {x:10,y:110,w:80,h:50,n:"Lift Lobby"},
+    {x:100,y:110,w:120,h:50,n:"Manager Cabins"},
+  ];
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 230 170" width="100%" height="100%">
+    <rect x="2" y="2" width="226" height="166" fill="#f6f8fb" stroke="${accent}" stroke-width="2"/>
+    ${rooms.map(r=>`
+      <rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="#ffffff" stroke="#c7d0dc" stroke-width="1.4"/>
+      <text x="${r.x+r.w/2}" y="${r.y+r.h/2}" font-size="9" fill="#5b6b7d" font-family="Arial" text-anchor="middle" dominant-baseline="middle">${r.n}</text>
+    `).join("")}
+    <text x="115" y="163" font-size="9" fill="${accent}" font-family="Arial" text-anchor="middle" font-weight="700">${label} · Floor 1 of ${floors}</text>
+  </svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+
+function heroSVG(label, accent){
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 170" width="100%" height="100%">
+    <rect width="400" height="170" fill="${accent}"/>
+    <circle cx="60" cy="130" r="90" fill="rgba(255,255,255,0.08)"/>
+    <circle cx="340" cy="30" r="70" fill="rgba(255,255,255,0.08)"/>
+    <text x="24" y="100" font-size="26" fill="#ffffff" font-family="Segoe UI, Arial" font-weight="700">${label}</text>
+  </svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+
+const BLOCK_ACCENTS = {
+  MAINBLOCK:"#0b1b33", CANTEEN:"#c2650f", SB1:"#2451c2", SB2:"#2451c2", SB3:"#2451c2",
+  PARKING:"#4a5568", TURF:"#1fa363"
+};
+
+let currentBlock = null;
+
+function openBuilding(id){
+  const b = BLOCKS[id];
+  currentBlock = id;
+  document.getElementById('sbTitle').textContent = b.label + (b.tag ? ` · ${b.tag}` : '');
+  document.getElementById('sbDesc').innerHTML = `<b>Description:</b> ${b.desc}`;
+  document.getElementById('sbFloors').innerHTML = `<b>Floors:</b> ${b.floors}`;
+  document.getElementById('sbHours').innerHTML = `<b>Open:</b> 8:00 AM – 9:00 PM`;
+  document.getElementById('sbHero').src = heroSVG(b.label, BLOCK_ACCENTS[id] || '#2451c2');
+  document.getElementById('sbTags').innerHTML = b.tags.map(t=>`<span class="sb-tag">${t}</span>`).join('');
+
+  const hasFloorPlan = ENTRANCES && b.floors>0 && id!=='TURF';
+  const floorImgEl = document.getElementById('sbFloorImg');
+  const floorTitleEl = document.getElementById('sbFloorTitle');
+  if (hasFloorPlan) {
+    floorImgEl.src = floorPlanSVG(b.label, b.floors, BLOCK_ACCENTS[id] || '#2451c2');
+    floorImgEl.style.display = 'block';
+    floorTitleEl.style.display = 'block';
+  } else {
+    floorImgEl.style.display = 'none';
+    floorTitleEl.style.display = 'none';
+  }
+
+  document.getElementById('sidebar').classList.add('open');
+
+  const b2 = blockLayers[id].getBounds();
+  map.flyToBounds(b2, {padding:[160,160], duration:0.6});
+}
+
+document.getElementById('sbClose').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.remove('open');
+});
+
+document.getElementById('sbRouteBtn').addEventListener('click', () => {
+  if (!currentBlock) return;
+  document.getElementById('fromInput').value = BLOCKS[currentBlock].label;
+  document.getElementById('sidebar').classList.remove('open');
+});
+
+let adminRunToken = 0;
+const adminPanel = document.getElementById('admin-panel');
+const adminInput = document.getElementById('adminInput');
+const adminStatus = document.getElementById('adminStatus');
+const adminStatusText = document.getElementById('adminStatusText');
+const adminResult = document.getElementById('adminResult');
+const adminActionValue = document.getElementById('adminActionValue');
+const adminFromValue = document.getElementById('adminFromValue');
+const adminToValue = document.getElementById('adminToValue');
+const adminRequestValue = document.getElementById('adminRequestValue');
+const adminNextStep = document.getElementById('adminNextStep');
+const adminInterpretBtn = document.getElementById('adminInterpretBtn');
+const adminPathQuestion = document.getElementById('adminPathQuestion');
+const adminPathOptions = document.querySelectorAll('.admin-path-option');
+const adminRenameCard = document.getElementById('adminRenameCard');
+const adminRenameCurrent = document.getElementById('adminRenameCurrent');
+const adminRenameNew = document.getElementById('adminRenameNew');
+const adminRenameQuestion = document.getElementById('adminRenameQuestion');
+const adminStatusChoice = document.getElementById('adminStatusChoice');
+const adminStatusOptions = document.querySelectorAll('.admin-status-option');
+const adminFinalCard = document.getElementById('adminFinalCard');
+const adminSelectedPath = document.getElementById('adminSelectedPath');
+const adminSelectedStatus = document.getElementById('adminSelectedStatus');
+const adminSelectedReason = document.getElementById('adminSelectedReason');
+const adminDecision = document.getElementById('adminDecision');
+const adminConfirmBackdrop = document.getElementById('adminConfirmBackdrop');
+const adminConfirmRouteLabel = document.getElementById('adminConfirmRouteLabel');
+const adminConfirmRoute = document.getElementById('adminConfirmRoute');
+const adminConfirmPathLabel = document.getElementById('adminConfirmPathLabel');
+const adminConfirmPath = document.getElementById('adminConfirmPath');
+const adminConfirmStatusLabel = document.getElementById('adminConfirmStatusLabel');
+const adminConfirmStatus = document.getElementById('adminConfirmStatus');
+const adminConfirmReasonLabel = document.getElementById('adminConfirmReasonLabel');
+const adminConfirmReason = document.getElementById('adminConfirmReason');
+const adminPasscode = document.getElementById('adminPasscode');
+const adminPasscodeError = document.getElementById('adminPasscodeError');
+const successPopup = document.getElementById('successPopup');
+let adminSelectedPathId = null;
+let adminCurrentRequest = '';
+let adminCurrentInterpretation = null;
+let adminPendingAction = null;
+
+function interpretAdminRequest(request){
+  const normalizedRequest = request.toLowerCase();
+  const actionTerms = ['block', 'close', 'reopen', 'reopen', 'unblock', 'open', 'construction', 'under construction'];
+  const mentionsAction = actionTerms.some(term => normalizedRequest.includes(term));
+  const mentionsSb1 = normalizedRequest.includes('sb1');
+  const mentionsCanteen = normalizedRequest.includes('canteen');
+  const recognizedPathUpdate = mentionsAction && mentionsSb1 && mentionsCanteen;
+  const suggestedStatus = normalizedRequest.includes('unblock') || normalizedRequest.includes('reopen') || normalizedRequest.includes('open')
+    ? 'OPEN'
+    : normalizedRequest.includes('construction')
+      ? 'UNDER CONSTRUCTION'
+      : normalizedRequest.includes('block') || normalizedRequest.includes('close')
+        ? 'BLOCKED'
+        : null;
+
+  return {
+    action: recognizedPathUpdate ? 'UPDATE_PATH_STATUS' : 'CAMPUS_CHANGE_REVIEW',
+    from: recognizedPathUpdate ? 'SB1 Main Entrance' : 'Location pending',
+    to: recognizedPathUpdate ? 'Canteen Entrance' : 'Location pending',
+    requiresPathChoice: recognizedPathUpdate,
+    suggestedStatus,
+  };
+}
+
+function closeAdminPanel(){
+  adminPanel.classList.remove('open');
+  adminRunToken++;
+  adminInterpretBtn.disabled = false;
+}
+
+document.getElementById('adminBtn').addEventListener('click', () => navigateTo('/admin'));
+
+document.getElementById('adminClose').addEventListener('click', closeAdminPanel);
+
+adminInterpretBtn.addEventListener('click', () => {
+  const request = adminInput.value.trim();
+  if (!request) {
+    adminInput.focus();
+    return;
+  }
+
+  const runToken = ++adminRunToken;
+  const stages = [
+    'Understanding request...',
+    'Identifying campus locations...',
+    'Checking available pathways...'
+  ];
+
+  adminInterpretBtn.disabled = true;
+  adminResult.classList.remove('show');
+  adminRenameCard.classList.remove('show');
+  adminNextStep.classList.remove('show');
+  adminPathOptions.forEach(option => option.classList.remove('selected'));
+  adminStatusChoice.classList.remove('show');
+  adminStatusOptions.forEach(option => option.classList.remove('selected'));
+  adminFinalCard.classList.remove('show');
+  adminDecision.classList.remove('show');
+  adminStatus.classList.add('show');
+  adminStatusText.textContent = stages[0];
+
+  stages.slice(1).forEach((stage, index) => {
+    setTimeout(() => {
+      if (runToken !== adminRunToken) return;
+      adminStatusText.textContent = stage;
+    }, (index + 1) * 650);
+  });
+
+  setTimeout(() => {
+    if (runToken !== adminRunToken) return;
+    fetch('/api/ai/admin-command', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({command:request})
+    })
+      .then(response => response.json().then(data => ({ok:response.ok, data})))
+      .then(({ok, data}) => {
+        if (runToken !== adminRunToken) return;
+        adminStatus.classList.remove('show');
+        if (!ok || !data.valid) {
+          adminActionValue.textContent = 'CLARIFICATION_REQUIRED';
+          adminFromValue.textContent = 'Needs clarification';
+          adminToValue.textContent = 'Needs clarification';
+          adminRequestValue.textContent = data.error || 'The command could not be validated.';
+          adminPathQuestion.textContent = data.error || 'Please provide a supported campus change.';
+          adminPathOptions.forEach(option => option.style.display='none');
+        } else {
+          const interpretation = data.interpretation;
+          adminCurrentInterpretation = interpretation;
+          adminActionValue.textContent = interpretation.action;
+          adminFromValue.textContent = interpretation.source || interpretation.target || '';
+          adminToValue.textContent = interpretation.destination || interpretation.new_name || '';
+          adminRequestValue.textContent = data.configuration_message || request;
+          adminPathOptions.forEach(option => option.style.display='');
+          if (interpretation.action === 'RENAME_BLOCK') {
+            adminPathQuestion.textContent = 'Review this building rename before confirmation.';
+            adminPathOptions.forEach(option => option.style.display='none');
+            adminRenameCurrent.textContent = interpretation.current_name;
+            adminRenameNew.textContent = interpretation.new_name;
+            adminRenameQuestion.textContent = `Rename ${interpretation.target} from '${interpretation.current_name}' to '${interpretation.new_name}'?`;
+            adminRenameCard.classList.add('show');
+          } else if (interpretation.path) {
+            const identified = document.querySelector(`[data-path-id="${interpretation.path}"]`);
+            if (identified) identified.click();
+          } else {
+            adminPathQuestion.textContent = 'Which pathway would you like to update?';
+          }
+        }
+        adminResult.classList.add('show');
+        adminInterpretBtn.disabled = false;
+      })
+      .catch(() => {
+        if (runToken !== adminRunToken) return;
+        adminStatus.classList.remove('show');
+        adminActionValue.textContent = 'AI_UNAVAILABLE';
+        adminRequestValue.textContent = 'Start the Flask server and configure GEMINI_API_KEY to use the AI assistant.';
+        adminResult.classList.add('show');
+        adminInterpretBtn.disabled = false;
+      });
+  }, stages.length * 650);
+});
+
+adminPathOptions.forEach(option => {
+  option.addEventListener('click', () => {
+    adminPathOptions.forEach(pathOption => pathOption.classList.remove('selected'));
+    option.classList.add('selected');
+    adminSelectedPathId = option.dataset.pathId;
+    adminCurrentRequest = adminInput.value.trim();
+    const pathName = option.textContent.trim();
+    adminNextStep.textContent = `${pathName} selected. Choose the status for this pathway.`;
+    adminNextStep.classList.add('show');
+    adminStatusChoice.classList.add('show');
+    adminFinalCard.classList.remove('show');
+    adminDecision.classList.remove('show');
+    if (adminCurrentInterpretation && adminCurrentInterpretation.status === 'OPEN' && adminCurrentRequest.toLowerCase().includes('unblock')) {
+      const openOption = [...adminStatusOptions].find(statusOption => statusOption.dataset.status === 'OPEN');
+      if (openOption) openOption.click();
+    }
+  });
+});
+
+adminStatusOptions.forEach(option => {
+  option.addEventListener('click', () => {
+    adminStatusOptions.forEach(statusOption => statusOption.classList.remove('selected'));
+    option.classList.add('selected');
+    const selectedPathOption = [...adminPathOptions].find(pathOption => pathOption.dataset.pathId===adminSelectedPathId);
+    const normalizedRequest = adminCurrentRequest.toLowerCase();
+    const reason = normalizedRequest.includes('construction') ? 'Construction' : interpretationReason(normalizedRequest);
+    adminSelectedPath.textContent = selectedPathOption ? selectedPathOption.textContent.trim() : 'Selected pathway';
+    adminSelectedStatus.textContent = option.dataset.status;
+    adminSelectedReason.textContent = reason;
+    adminFinalCard.classList.add('show');
+    adminDecision.classList.remove('show');
+  });
+});
+
+function interpretationReason(normalizedRequest){
+  return normalizedRequest.includes('unblock') || normalizedRequest.includes('reopen') ? 'Admin update' : 'Administrator request';
+}
+
+document.getElementById('adminCancelChange').addEventListener('click', () => {
+  adminFinalCard.classList.remove('show');
+  adminStatusOptions.forEach(option => option.classList.remove('selected'));
+  adminDecision.classList.remove('show');
+  adminNextStep.textContent = 'Select a status for the chosen pathway.';
+});
+
+function openAdminConfirmation(action){
+  adminPendingAction = action;
+  const isRename = action.action === 'RENAME_BLOCK';
+  adminConfirmRouteLabel.textContent = isRename ? 'Block' : 'Path';
+  adminConfirmRoute.textContent = isRename ? action.target : 'SB1 Main Entrance → Canteen Entrance';
+  adminConfirmPathLabel.textContent = isRename ? 'Current name' : 'Path';
+  adminConfirmPath.textContent = isRename ? action.current_name : adminSelectedPath.textContent;
+  adminConfirmStatusLabel.textContent = isRename ? 'New name' : 'New Status';
+  adminConfirmStatus.textContent = isRename ? action.new_name : adminSelectedStatus.textContent;
+  adminConfirmReasonLabel.textContent = 'Reason';
+  adminConfirmReason.textContent = isRename ? 'Display name update' : adminSelectedReason.textContent;
+  adminPasscode.value = '';
+  adminPasscodeError.classList.remove('show');
+  adminConfirmBackdrop.classList.add('show');
+  adminPasscode.focus();
+}
+
+document.getElementById('adminApproveChange').addEventListener('click', () => {
+  openAdminConfirmation({
+    action: 'UPDATE_PATH_STATUS',
+    source: 'SB1 Main Entrance',
+    destination: 'Canteen Entrance',
+    path: adminSelectedPathId,
+    status: adminSelectedStatus.textContent,
+    reason: adminSelectedReason.textContent,
+  });
+});
+
+document.getElementById('adminRenameConfirm').addEventListener('click', () => {
+  openAdminConfirmation({
+    action: 'RENAME_BLOCK',
+    target: adminCurrentInterpretation.target,
+    current_name: adminCurrentInterpretation.current_name,
+    new_name: adminCurrentInterpretation.new_name,
+  });
+});
+
+document.getElementById('adminRenameCancel').addEventListener('click', () => {
+  adminRenameCard.classList.remove('show');
+});
+
+document.getElementById('adminConfirmCancel').addEventListener('click', () => {
+  adminConfirmBackdrop.classList.remove('show');
+  adminPasscodeError.classList.remove('show');
+});
+
+document.getElementById('adminConfirmUpdate').addEventListener('click', async () => {
+  const response = await fetch('/api/admin/apply', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({passcode:adminPasscode.value, action:adminPendingAction}),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    adminPasscodeError.textContent = result.error || 'Invalid admin passcode.';
+    adminPasscodeError.classList.add('show');
+    adminPasscode.focus();
+    return;
+  }
+  const action = result.action;
+  if (action.action === 'UPDATE_PATH_STATUS') {
+    ROAD_STATUS[action.path] = action.status;
+    localStorage.setItem(ROAD_STATUS_STORAGE_KEY, JSON.stringify(ROAD_STATUS));
+    refreshRoadLayer(action.path);
+    const fromBlock = document.getElementById('fromInput').value;
+    const toBlock = document.getElementById('toInput').value;
+    if (fromBlock && toBlock) drawRoute(findBlockIdByLabel(fromBlock), findBlockIdByLabel(toBlock));
+  } else {
+    BLOCKS[action.target].label = action.new_name;
+    localStorage.setItem('naviquest-block-names', JSON.stringify(Object.fromEntries(Object.entries(BLOCKS).map(([id, block]) => [id, block.label]))));
+    refreshBlockNameSurfaces();
+  }
+  const updateRecord = {
+    timestamp: result.timestamp,
+    path: action.path === 'PATH_A_SB1_CANTEEN' ? 'Path A' : action.path === 'PATH_B_SB1_CANTEEN' ? 'Path B' : action.target,
+    status: action.status || action.new_name,
+    reason: action.reason || 'Display name update',
+    action: action.action,
+    adminName: sessionStorage.getItem('naviquest-admin-name') || 'admin',
+  };
+  localStorage.setItem(CAMPUS_UPDATE_STORAGE_KEY, JSON.stringify(updateRecord));
+  adminConfirmBackdrop.classList.remove('show');
+  adminDecision.textContent = 'Change completed successfully.';
+  adminDecision.classList.add('show');
+  successPopup.classList.add('show');
+  setTimeout(() => successPopup.classList.remove('show'), 3600);
+});
+
+/* =========================================================
+   5. NAVBAR: departments, search, swap, clear
+   ========================================================= */
+
+const deptMenu = document.getElementById('deptMenu');
+function refreshBlockNameSurfaces(){
+  deptMenu.replaceChildren();
+  Object.entries(BLOCKS).forEach(([id,b]) => {
+    const btn = document.createElement('button');
+    btn.textContent = b.label + (b.tag ? ` — ${b.tag}` : '');
+    btn.addEventListener('click', () => { openBuilding(id); deptMenu.classList.remove('open'); });
+    deptMenu.appendChild(btn);
+    if (blockLayers[id] && blockLayers[id].getTooltip()) blockLayers[id].setTooltipContent(b.label);
+  });
+  if (typeof blockList !== 'undefined') {
+    blockList.replaceChildren();
+    Object.values(BLOCKS).forEach(b => { const opt = document.createElement('option'); opt.value = b.label; blockList.appendChild(opt); });
+  }
+}
+document.getElementById('deptBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  deptMenu.classList.toggle('open');
+});
+document.addEventListener('click', () => deptMenu.classList.remove('open'));
+
+const blockList = document.getElementById('blockList');
+refreshBlockNameSurfaces();
+
+function findBlockIdByLabel(label){
+  label = (label||'').trim().toLowerCase();
+  const entry = Object.entries(BLOCKS).find(([,b]) => b.label.toLowerCase()===label);
+  return entry ? entry[0] : null;
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(()=>{ t.style.display='none'; }, 2600);
+}
+
+document.getElementById('searchBtn').addEventListener('click', () => {
+  const fromLabel = document.getElementById('fromInput').value;
+  const toLabel = document.getElementById('toInput').value;
+  const a = findBlockIdByLabel(fromLabel), b = findBlockIdByLabel(toLabel);
+  if (!a || !b) { showToast("Pick a valid From and To building."); return; }
+  if (a===b) { showToast("From and To are the same building."); return; }
+  document.getElementById('sidebar').classList.remove('open');
+  drawRoute(a,b);
+});
+
+document.getElementById('swapBtn').addEventListener('click', () => {
+  const f = document.getElementById('fromInput'), t = document.getElementById('toInput');
+  const tmp = f.value; f.value = t.value; t.value = tmp;
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  clearRoute();
+  document.getElementById('fromInput').value='';
+  document.getElementById('toInput').value='';
+  map.fitBounds(bounds, {padding:[40,40]});
+});
+
+[document.getElementById('fromInput'), document.getElementById('toInput')].forEach(el=>{
+  el.addEventListener('keydown', (e)=>{ if (e.key==='Enter') document.getElementById('searchBtn').click(); });
+});
+
+document.getElementById('editorSaveBtn').addEventListener('click', () => {
+  localStorage.setItem(ROAD_STATUS_STORAGE_KEY, JSON.stringify(ROAD_STATUS));
+  const note = document.getElementById('editorSaveNote');
+  note.classList.add('show');
+  setTimeout(() => note.classList.remove('show'), 1800);
+});
+
+document.getElementById('editorResetBtn').addEventListener('click', () => {
+  ROADS.forEach(road => {
+    ROAD_STATUS[road.id] = 'OPEN';
+    refreshRoadLayer(road.id);
+  });
+  const originalBlockNames = {MAINBLOCK:'Main Block', CANTEEN:'Canteen', SB1:'SB1', SB2:'SB2', SB3:'SB3', PARKING:'Parking', TURF:'Turf'};
+  Object.entries(originalBlockNames).forEach(([id, label]) => { if (BLOCKS[id]) BLOCKS[id].label = label; });
+  localStorage.setItem(ROAD_STATUS_STORAGE_KEY, JSON.stringify(ROAD_STATUS));
+  localStorage.setItem('naviquest-block-names', JSON.stringify(originalBlockNames));
+  localStorage.removeItem(CAMPUS_UPDATE_STORAGE_KEY);
+  refreshBlockNameSurfaces();
+  document.getElementById('viewerUpdate').classList.remove('show');
+  showToast('Demo data reset. All pathways are open.');
+});
+
+function readCampusUpdate(){
+  try { return JSON.parse(localStorage.getItem(CAMPUS_UPDATE_STORAGE_KEY) || 'null'); } catch (error) { return null; }
+}
+
+function renderViewerUpdate(){
+  const update = readCampusUpdate();
+  const banner = document.getElementById('viewerUpdate');
+  if (!update) { banner.classList.remove('show'); return; }
+  const isRename = update.action === 'RENAME_BLOCK';
+  const isOpen = update.status === 'OPEN';
+  document.getElementById('viewerUpdateTitle').textContent = isRename ? '🟢 Campus Map Updated' : (isOpen ? '🟢 Campus Map Updated' : '🟢 Campus Map Updated Recently');
+  document.getElementById('viewerUpdatePath').textContent = isRename
+    ? `${update.path} renamed to ${update.status}`
+    : (isOpen ? `${update.path} reopened` : update.path);
+  document.getElementById('viewerUpdateStatus').textContent = isRename ? '' : (isOpen ? '' : `${update.path} • ${update.status}`);
+  document.getElementById('viewerUpdateReason').textContent = `Reason: ${update.reason}`;
+  banner.classList.add('show');
+}
+
+document.getElementById('viewerDismissUpdate').addEventListener('click', () => {
+  localStorage.removeItem(CAMPUS_UPDATE_STORAGE_KEY);
+  document.getElementById('viewerUpdate').classList.remove('show');
+});
+
+document.getElementById('viewerViewChanges').addEventListener('click', () => {
+  navigateTo('/');
+  document.getElementById('viewerUpdate').scrollIntoView({behavior:'smooth', block:'nearest'});
+});
+
+function setRoute(path, replace){
+  const isAdmin = path === '/admin';
+  const isEdit = path === '/edit';
+  const isViewer = !isAdmin && !isEdit;
+  if (isEdit && sessionStorage.getItem('naviquest-admin-auth') !== 'true') {
+    path = '/admin';
+  }
+  if (replace) history.replaceState({}, '', path);
+  else history.pushState({}, '', path);
+  const showLogin = path === '/admin';
+  const showEditor = path === '/edit' && sessionStorage.getItem('naviquest-admin-auth') === 'true';
+  document.getElementById('adminLoginPage').classList.toggle('show', showLogin);
+  document.getElementById('map-wrap').style.display = showLogin ? 'none' : '';
+  document.getElementById('admin-panel').classList.toggle('open', showEditor);
+  document.getElementById('editorStrip').classList.toggle('show', showEditor);
+  document.getElementById('viewerBtn').classList.toggle('show', showLogin || showEditor);
+  document.getElementById('adminBtn').style.display = showLogin ? 'none' : '';
+  if (isViewer) renderViewerUpdate();
+  if (showEditor) setTimeout(() => map.invalidateSize(), 0);
+}
+
+function navigateTo(path){ setRoute(path, false); }
+
+document.getElementById('adminLoginForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const name = document.getElementById('adminNameInput').value.trim();
+  const password = document.getElementById('adminPasswordInput').value;
+  const error = document.getElementById('adminLoginError');
+  if (name !== 'admin' || password !== '2468') {
+    error.classList.add('show');
+    return;
+  }
+  error.classList.remove('show');
+  sessionStorage.setItem('naviquest-admin-auth', 'true');
+  sessionStorage.setItem('naviquest-admin-name', name);
+  navigateTo('/edit');
+});
+
+document.getElementById('viewerBtn').addEventListener('click', () => navigateTo('/'));
+window.addEventListener('popstate', () => setRoute(window.location.pathname || '/', true));
+setRoute(window.location.pathname || '/', true);
+</script>
+</body>
+</html>
