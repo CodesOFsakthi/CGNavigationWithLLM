@@ -28,7 +28,7 @@ Never put `GEMINI_API_KEY` in frontend JavaScript or commit `.env`.
 python app.py
 ```
 
-Open `http://127.0.0.1:5000/`. Without `GEMINI_API_KEY`, the backend keeps the app usable with deterministic rule-based interpretation and returns a configuration message.
+Open `http://127.0.0.1:5000/`. Without `GEMINI_API_KEY`, the backend keeps the app usable with deterministic rule-based interpretation and identifies that method in the admin panel's technical details.
 
 The browser calls relative Flask endpoints such as `/api/ai/admin-command`; it never calls Gemini directly. Demo road status, block names, and update notifications continue to use browser `localStorage`. Render's filesystem is not used as permanent storage.
 

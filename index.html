@@ -31,6 +31,8 @@
     z-index:1200;
     border-bottom:1px solid rgba(255,255,255,0.06);
   }
+  .navbar.admin-mode{background:#542116;border-bottom-color:#f08a55;}
+  .navbar.admin-mode .admin-btn{background:#fff1eb;border-color:#f08a55;color:#7c2d12;}
   .brand{
     color:#fff;
     font-weight:700;
@@ -68,6 +70,16 @@
   }
   .searchbar input::placeholder{color:#8393a8;}
   .searchbar input:focus{outline:2px solid #3d6fd6;background:#22344f;}
+  .destination-combobox{position:relative;flex:1;min-width:0;}
+  .destination-combobox input{width:100%;}
+  .destination-suggestions{
+    display:none;position:absolute;top:44px;left:0;right:0;z-index:1400;margin:0;padding:4px 0;
+    list-style:none;background:#fff;border:1px solid #cbd5e1;border-radius:7px;
+    box-shadow:0 10px 24px rgba(0,0,0,0.24);overflow:hidden;
+  }
+  .destination-suggestions.show{display:block;}
+  .destination-suggestions li{padding:9px 12px;color:var(--ink);font-size:14px;cursor:pointer;}
+  .destination-suggestions li:hover,.destination-suggestions li[aria-selected="true"]{background:#eef4fc;}
   .searchbar button{
     height:38px;padding:0 22px;border:none;border-radius:7px;background:#2563eb;
     color:#fff;font-weight:600;font-size:14px;cursor:pointer;
@@ -137,6 +149,11 @@
   /* ---------- Map area ---------- */
   #map-wrap{position:relative;height:calc(100% - 64px);width:100%;}
   #map{height:100%;width:100%;background:#0d1420;}
+  #map-wrap.admin-mode{box-shadow:inset 0 0 0 4px #f08a55;}
+  .admin-mode-banner{display:none;position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:850;
+    padding:9px 14px;border:1px solid #f08a55;border-radius:7px;background:#fff1eb;color:#7c2d12;
+    box-shadow:0 8px 20px rgba(0,0,0,0.2);font-size:12px;font-weight:800;letter-spacing:.02em;}
+  .admin-mode-banner.show{display:block;}
 
   .leaflet-control-zoom a{border-radius:6px !important;}
 
@@ -321,7 +338,12 @@
   <div class="searchbar">
     <input list="blockList" id="fromInput" placeholder="From" />
     <button class="swap" id="swapBtn" title="Swap">⇄</button>
-    <input list="blockList" id="toInput" placeholder="To" />
+    <div class="destination-combobox">
+      <input type="text" name="fakeusernameremembered" style="display: none" />
+      <input type="password" name="fakepasswordremembered" style="display: none" />
+      <input id="destination-query" name="destination-query" placeholder="To" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="destination-suggestions" aria-autocomplete="list" />
+      <ul class="destination-suggestions" id="destination-suggestions" role="listbox"></ul>
+    </div>
     <datalist id="blockList"></datalist>
     <button id="searchBtn">Search</button>
   </div>
@@ -350,6 +372,7 @@
 
 <div id="map-wrap">
   <div id="map"></div>
+  <div class="admin-mode-banner" id="adminModeBanner">ADMIN MODE · You are editing the live campus map</div>
 
   <div class="editor-strip" id="editorStrip">
     <strong>Campus map editor</strong>
@@ -440,7 +463,7 @@
               <div class="admin-decision" id="adminDecision" aria-live="polite"></div>
             </div>
           </div>
-          <div class="admin-result-meta"><span>Prototype rule match</span><strong id="adminConfidence">High confidence</strong></div>
+          <div class="admin-result-meta"><span id="adminMethodLabel">Interpretation method</span><strong id="adminConfidence">High confidence</strong></div>
         </div>
       </div>
     </div>
@@ -773,7 +796,7 @@ function refreshRoadLayer(roadId){
   const status = ROAD_STATUS[roadId];
   const style = status === 'BLOCKED'
     ? {color:'#e0362e', weight:4, opacity:0.9, dashArray:'8 6'}
-    : status === 'UNDER CONSTRUCTION'
+    : status === 'UNDER_CONSTRUCTION'
       ? {color:'#e49a19', weight:4, opacity:0.9, dashArray:'5 5'}
       : {color:'#ffffff', weight:2, opacity:0.28, dashArray:'1 7'};
   layer.setStyle(style);
@@ -786,6 +809,22 @@ function refreshRoadLayer(roadId){
   layer.bindTooltip(status, {permanent:true, direction:'center', className:labelClass, opacity:1});
 }
 ROADS.forEach(r => refreshRoadLayer(r.id));
+
+function reloadPersistedCampusState(){
+  let savedRoadStatus = {};
+  try { savedRoadStatus = JSON.parse(localStorage.getItem(ROAD_STATUS_STORAGE_KEY) || '{}'); } catch (error) {}
+  ROADS.forEach(road => {
+    const savedStatus = savedRoadStatus[road.id] === 'UNDER CONSTRUCTION' ? 'UNDER_CONSTRUCTION' : savedRoadStatus[road.id];
+    ROAD_STATUS[road.id] = ['OPEN','BLOCKED','UNDER_CONSTRUCTION'].includes(savedStatus) ? savedStatus : 'OPEN';
+    refreshRoadLayer(road.id);
+  });
+
+  try {
+    const savedBlockNames = JSON.parse(localStorage.getItem('naviquest-block-names') || '{}');
+    Object.entries(savedBlockNames).forEach(([id, label]) => { if (BLOCKS[id] && typeof label === 'string') BLOCKS[id].label = label; });
+  } catch (error) {}
+  if (typeof refreshBlockNameSurfaces === 'function') refreshBlockNameSurfaces();
+}
 
 // building polygons
 const blockLayers = {};
@@ -928,6 +967,8 @@ const adminActionValue = document.getElementById('adminActionValue');
 const adminFromValue = document.getElementById('adminFromValue');
 const adminToValue = document.getElementById('adminToValue');
 const adminRequestValue = document.getElementById('adminRequestValue');
+const adminMethodLabel = document.getElementById('adminMethodLabel');
+const adminConfidence = document.getElementById('adminConfidence');
 const adminNextStep = document.getElementById('adminNextStep');
 const adminInterpretBtn = document.getElementById('adminInterpretBtn');
 const adminPathQuestion = document.getElementById('adminPathQuestion');
@@ -1049,7 +1090,10 @@ adminInterpretBtn.addEventListener('click', () => {
           adminActionValue.textContent = interpretation.action;
           adminFromValue.textContent = interpretation.source || interpretation.target || '';
           adminToValue.textContent = interpretation.destination || interpretation.new_name || '';
-          adminRequestValue.textContent = data.configuration_message || request;
+          adminRequestValue.textContent = 'Request interpreted successfully.';
+          const usedFallback = data.usedFallback === true;
+          adminMethodLabel.textContent = usedFallback ? "NaviQuest's built-in path rules" : 'Gemini interpretation';
+          adminConfidence.textContent = usedFallback ? 'Prototype rule match' : 'High confidence';
           adminPathOptions.forEach(option => option.style.display='');
           if (interpretation.action === 'RENAME_BLOCK') {
             adminPathQuestion.textContent = 'Review this building rename before confirmation.';
@@ -1188,7 +1232,7 @@ document.getElementById('adminConfirmUpdate').addEventListener('click', async ()
     localStorage.setItem(ROAD_STATUS_STORAGE_KEY, JSON.stringify(ROAD_STATUS));
     refreshRoadLayer(action.path);
     const fromBlock = document.getElementById('fromInput').value;
-    const toBlock = document.getElementById('toInput').value;
+    const toBlock = document.getElementById('destination-query').value;
     if (fromBlock && toBlock) drawRoute(findBlockIdByLabel(fromBlock), findBlockIdByLabel(toBlock));
   } else {
     BLOCKS[action.target].label = action.new_name;
@@ -1239,6 +1283,39 @@ document.addEventListener('click', () => deptMenu.classList.remove('open'));
 const blockList = document.getElementById('blockList');
 refreshBlockNameSurfaces();
 
+const destinationQuery = document.getElementById('destination-query');
+const destinationSuggestions = document.getElementById('destination-suggestions');
+
+function closeDestinationSuggestions(){
+  destinationSuggestions.classList.remove('show');
+  destinationQuery.setAttribute('aria-expanded', 'false');
+}
+
+function renderDestinationSuggestions(){
+  const query = destinationQuery.value.trim().toLowerCase();
+  const matches = Object.entries(BLOCKS).filter(([, block]) => block.label.toLowerCase().includes(query));
+  destinationSuggestions.replaceChildren();
+  matches.forEach(([id, block]) => {
+    const option = document.createElement('li');
+    option.textContent = block.label;
+    option.dataset.blockId = id;
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', 'false');
+    option.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+      destinationQuery.value = block.label;
+      closeDestinationSuggestions();
+    });
+    destinationSuggestions.appendChild(option);
+  });
+  destinationSuggestions.classList.toggle('show', matches.length > 0);
+  destinationQuery.setAttribute('aria-expanded', matches.length > 0 ? 'true' : 'false');
+}
+
+destinationQuery.addEventListener('input', renderDestinationSuggestions);
+destinationQuery.addEventListener('focus', renderDestinationSuggestions);
+destinationQuery.addEventListener('blur', () => setTimeout(closeDestinationSuggestions, 0));
+
 function findBlockIdByLabel(label){
   label = (label||'').trim().toLowerCase();
   const entry = Object.entries(BLOCKS).find(([,b]) => b.label.toLowerCase()===label);
@@ -1255,7 +1332,7 @@ function showToast(msg){
 
 document.getElementById('searchBtn').addEventListener('click', () => {
   const fromLabel = document.getElementById('fromInput').value;
-  const toLabel = document.getElementById('toInput').value;
+  const toLabel = destinationQuery.value;
   const a = findBlockIdByLabel(fromLabel), b = findBlockIdByLabel(toLabel);
   if (!a || !b) { showToast("Pick a valid From and To building."); return; }
   if (a===b) { showToast("From and To are the same building."); return; }
@@ -1264,18 +1341,19 @@ document.getElementById('searchBtn').addEventListener('click', () => {
 });
 
 document.getElementById('swapBtn').addEventListener('click', () => {
-  const f = document.getElementById('fromInput'), t = document.getElementById('toInput');
+  const f = document.getElementById('fromInput'), t = destinationQuery;
   const tmp = f.value; f.value = t.value; t.value = tmp;
 });
 
 document.getElementById('clearBtn').addEventListener('click', () => {
   clearRoute();
   document.getElementById('fromInput').value='';
-  document.getElementById('toInput').value='';
+  destinationQuery.value='';
+  closeDestinationSuggestions();
   map.fitBounds(bounds, {padding:[40,40]});
 });
 
-[document.getElementById('fromInput'), document.getElementById('toInput')].forEach(el=>{
+[document.getElementById('fromInput'), destinationQuery].forEach(el=>{
   el.addEventListener('keydown', (e)=>{ if (e.key==='Enter') document.getElementById('searchBtn').click(); });
 });
 
@@ -1341,13 +1419,19 @@ function setRoute(path, replace){
   else history.pushState({}, '', path);
   const showLogin = path === '/admin';
   const showEditor = path === '/edit' && sessionStorage.getItem('naviquest-admin-auth') === 'true';
+  document.querySelector('.navbar').classList.toggle('admin-mode', showEditor);
+  document.getElementById('map-wrap').classList.toggle('admin-mode', showEditor);
+  document.getElementById('adminModeBanner').classList.toggle('show', showEditor);
   document.getElementById('adminLoginPage').classList.toggle('show', showLogin);
   document.getElementById('map-wrap').style.display = showLogin ? 'none' : '';
   document.getElementById('admin-panel').classList.toggle('open', showEditor);
   document.getElementById('editorStrip').classList.toggle('show', showEditor);
   document.getElementById('viewerBtn').classList.toggle('show', showLogin || showEditor);
   document.getElementById('adminBtn').style.display = showLogin ? 'none' : '';
-  if (isViewer) renderViewerUpdate();
+  if (isViewer) {
+    reloadPersistedCampusState();
+    renderViewerUpdate();
+  }
   if (showEditor) setTimeout(() => map.invalidateSize(), 0);
 }
 
@@ -1369,6 +1453,11 @@ document.getElementById('adminLoginForm').addEventListener('submit', (event) => 
 });
 
 document.getElementById('viewerBtn').addEventListener('click', () => navigateTo('/'));
+window.addEventListener('storage', (event) => {
+  if (![ROAD_STATUS_STORAGE_KEY, 'naviquest-block-names', CAMPUS_UPDATE_STORAGE_KEY].includes(event.key)) return;
+  reloadPersistedCampusState();
+  if (window.location.pathname === '/') renderViewerUpdate();
+});
 window.addEventListener('popstate', () => setRoute(window.location.pathname || '/', true));
 setRoute(window.location.pathname || '/', true);
 </script>

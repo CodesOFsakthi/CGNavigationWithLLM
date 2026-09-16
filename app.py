@@ -43,7 +43,6 @@ BLOCKS = {
 STATUSES = {"OPEN", "BLOCKED", "UNDER_CONSTRUCTION"}
 ACTIONS = {"UPDATE_PATH_STATUS", "RENAME_BLOCK"}
 PASSCODE = "2468"
-MISSING_AI_MESSAGE = "AI assistant is not configured. Please add GEMINI_API_KEY to the server environment."
 
 
 def normalize_status(value):
@@ -105,7 +104,7 @@ def gemini_interpretation(command):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key or genai is None or types is None:
         result = deterministic_interpretation(command)
-        result["configuration_message"] = MISSING_AI_MESSAGE
+        result["used_fallback"] = True
         return result
 
     client = genai.Client(api_key=api_key)
@@ -146,7 +145,7 @@ Command: {command}"""
         return result
     except Exception:
         result = deterministic_interpretation(command)
-        result["configuration_message"] = "Gemini could not interpret this request; using deterministic prototype interpretation."
+        result["used_fallback"] = True
         return result
 
 
@@ -213,7 +212,12 @@ def admin_command():
     validated, error = validate_action(interpreted)
     if error:
         return jsonify({"valid": False, "error": error, "interpretation": interpreted}), 422
-    return jsonify({"valid": True, "interpretation": validated, "ai_available": interpreted.get("ai_available", False), "configuration_message": interpreted.get("configuration_message")})
+    return jsonify({
+        "valid": True,
+        "interpretation": validated,
+        "ai_available": interpreted.get("ai_available", False),
+        "usedFallback": interpreted.get("used_fallback", not interpreted.get("ai_available", False)),
+    })
 
 
 @app.post("/api/admin/apply")
